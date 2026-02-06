@@ -9,6 +9,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@300;400;600;700&display=swap"
         rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
     <!-- PWA Support -->
     <link rel="manifest" href="manifest.json">
     <style>
@@ -99,7 +102,7 @@
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="text-xs text-gray-500">Init Balance</label>
-                        <input type="number" id="initBalance" value="10000"
+                        <input type="number" id="initBalance" value="100"
                             class="w-full bg-darker border border-white/10 rounded p-2 text-white outline-none">
                     </div>
                     <div>
@@ -121,37 +124,33 @@
                     </div>
                     <div>
                         <label class="text-xs text-gray-500">TP (pts)</label>
-                        <input type="number" id="takeProfit" value="1000"
+                        <input type="number" id="takeProfit" value="900"
                             class="w-full bg-darker border border-white/10 rounded p-2 text-white outline-none">
                     </div>
                     <div>
                         <label class="text-xs text-gray-500">SL (pts)</label>
-                        <input type="number" id="stopLoss" value="500"
+                        <input type="number" id="stopLoss" value="900"
                             class="w-full bg-darker border border-white/10 rounded p-2 text-white outline-none">
                     </div>
                     <div>
                         <label class="text-xs text-gray-500">Trail Trig</label>
-                        <input type="number" id="trailTrigger" value="200"
+                        <input type="number" id="trailTrigger" value="300"
                             class="w-full bg-darker border border-white/10 rounded p-2 text-white outline-none">
                     </div>
                     <div>
                         <label class="text-xs text-gray-500">Trail Dist</label>
-                        <input type="number" id="trailDist" value="100"
+                        <input type="number" id="trailDist" value="200"
                             class="w-full bg-darker border border-white/10 rounded p-2 text-white outline-none">
                     </div>
                     <div>
                         <label class="text-xs text-gray-500">Max Entry</label>
-                        <input type="number" id="maxEntry" value="50"
+                        <input type="number" id="maxEntry" value="70"
                             class="w-full bg-darker border border-white/10 rounded p-2 text-white outline-none">
                     </div>
-                    <div>
-                        <label class="text-xs text-gray-500">Spread</label>
-                        <input type="number" id="spread" value="20"
-                            class="w-full bg-darker border border-white/10 rounded p-2 text-white outline-none">
-                    </div>
+
                     <div>
                         <label class="text-xs text-gray-500">Latency</label>
-                        <input type="number" id="latency" value="0"
+                        <input type="number" id="latency" value="300"
                             class="w-full bg-darker border border-white/10 rounded p-2 text-white outline-none">
                     </div>
                 </div>
@@ -271,16 +270,13 @@
     <!-- Logic -->
     <script>
         // --- Setup ---
-        // Dynamic API URL for VPS/Localhost
-        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:';
-        let API_URL = isLocal ? "http://localhost:8000" : `http://${window.location.hostname}:8000`;
+        // Supabase Init
+        const SUPABASE_URL = "https://itlaailqklwbwtmsrxbs.supabase.co";
+        const SUPABASE_KEY = "sb_publishable_ChgpilaHISHY5LoMnvy_IA_SZhV-9px";
+        const { createClient } = supabase;
+        const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // Manual Override via URL param ?api=x.x.x.x
-        const urlParams = new URLSearchParams(window.location.search);
-        const apiParam = urlParams.get('api');
-        if (apiParam) API_URL = `http://${apiParam}:8000`; // HTTP for now
-
-        console.log("Using API:", API_URL);
+        console.log("Supabase Initialized");
 
         setInterval(() => { document.getElementById('lastUpdate').innerText = new Date().toLocaleTimeString(); }, 1000);
 
@@ -324,7 +320,7 @@
         async function runSimulation() {
             const btn = document.getElementById('runBtn');
             const originalText = btn.innerText;
-            btn.innerText = "RUNNING...";
+            btn.innerText = "QUEUING...";
             btn.disabled = true;
             btn.classList.add('opacity-50');
 
@@ -339,20 +335,79 @@
                 trail_dist_points: parseFloat(document.getElementById('trailDist').value),
                 max_entry_dist_points: parseFloat(document.getElementById('maxEntry').value),
                 latency_ms: parseInt(document.getElementById('latency').value),
-                spread_points: parseFloat(document.getElementById('spread').value),
             };
 
             try {
-                const res = await fetch(`${API_URL}/simulate`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(params)
-                });
-                const data = await res.json();
-                updateUI(data);
+                // 1. Insert Request
+                const { data, error } = await sb
+                    .from('simulation_requests')
+                    .insert({ params: params })
+                    .select()
+                    .single();
+
+                if (error) throw error;
+                const requestId = data.id;
+                console.log(`Request ID: ${requestId}`);
+                btn.innerText = "PROCESSING...";
+
+                // 2. Setup Cleanup
+                let pollInterval;
+
+                // Helper to handle updates
+                function handleUpdate(row) {
+                    if (row.status === 'completed') {
+                        updateUI(row.result);
+                        cleanup();
+                    } else if (row.status === 'error') {
+                        alert(`Simulation Error: ${row.error_message}`);
+                        cleanup();
+                    }
+                }
+
+                // 3. Realtime Subscription
+                const channel = sb
+                    .channel(`sim_${requestId}`)
+                    .on('postgres_changes',
+                        {
+                            event: 'UPDATE',
+                            schema: 'public',
+                            table: 'simulation_requests',
+                            filter: `id=eq.${requestId}`
+                        },
+                        (payload) => handleUpdate(payload.new)
+                    )
+                    .subscribe();
+
+                // 4. Polling Fallback (Every 1s) - Handles blocked websockets/missed events
+                pollInterval = setInterval(async () => {
+                    const { data: pollData } = await sb
+                        .from('simulation_requests')
+                        .select('*')
+                        .eq('id', requestId)
+                        .single();
+
+                    if (pollData && (pollData.status === 'completed' || pollData.status === 'error')) {
+                        handleUpdate(pollData);
+                    }
+                }, 1000);
+
+                // 5. Timeout Safety
+                const timeout = setTimeout(() => {
+                    alert("Simulation Timed Out (VPS might be offline)");
+                    cleanup();
+                }, 60000); // 60s timeout
+
+                function cleanup() {
+                    if (pollInterval) clearInterval(pollInterval);
+                    sb.removeChannel(channel);
+                    clearTimeout(timeout);
+                    btn.innerText = originalText;
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-50');
+                }
+
             } catch (e) {
-                alert(`Error Fetching ${API_URL}\n${e.message}\n\nNote: If using VPS, add ?api=VPS_IP to URL.`);
-            } finally {
+                alert(`Error: ${e.message}`);
                 btn.innerText = originalText;
                 btn.disabled = false;
                 btn.classList.remove('opacity-50');
