@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clintrades | Gold Simulation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@300;400;600;700&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Josefin Sans', sans-serif;
+            background-color: #0A0A0A;
+            color: white;
+            overflow: hidden;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(255, 140, 0, 0.3);
+            border-radius: 3px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 140, 0, 0.8);
+        }
+
+        input[type="number"] {
+            -moz-appearance: textfield;
+            appearance: textfield;
+        }
+
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        .glass {
+            background: rgba(26, 26, 26, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* Modal Animation */
+        #equityModal {
+            transition: opacity 0.3s ease;
+        }
+
+        #equityModal.hidden {
+            display: none;
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: { primary: '#FF8C00', dark: '#0A0A0A', darker: '#000000', secondary: '#1A1A1A' }
+                }
+            }
+        }
+    </script>
+</head>
+
+<body class="flex flex-col md:flex-row min-h-screen w-screen md:h-screen md:overflow-hidden bg-dark">
+
+    <!-- Sidebar (Form) -->
+    <div
+        class="w-full md:w-80 bg-secondary border-b md:border-b-0 md:border-r border-white/10 flex flex-col p-6 space-y-6 z-20 shadow-xl md:overflow-y-auto md:h-full shrink-0">
+        <div class="flex items-center space-x-3">
+            <div class="w-3 h-8 bg-primary rounded-full shadow-[0_0_15px_#FF8C00]"></div>
+            <h1 class="text-2xl font-bold tracking-widest uppercase">Clintrades</h1>
+        </div>
+
+        <div class="space-y-6">
+            <!-- Account -->
+            <div class="space-y-3">
+                <h3 class="text-xs text-gray-500 uppercase tracking-wider font-semibold">Account</h3>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-xs text-gray-500">Init Balance</label>
+                        <input type="number" id="initBalance" value="10000"
+                            class="w-full bg-darker border border-white/10 rounded p-2 text-white outline-none">
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500">Lot Size</label>
+                        <input type="number" id="lotSize" value="0.10" step="0.01"
+                            class="w-full bg-darker border border-white/10 rounded p-2 text-white outline-none">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Simulation Inputs -->
+            <div class="space-y-3">
+                <h3 class="text-xs text-gray-500 uppercase tracking-wider font-semibold">Strategy</h3>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="col-span-2">
+                        <label class="text-xs text-gray-500">MA Period</label>
+                        <input type="number" id="maPeriod" value="1500"
+                            class="w-full bg-darker border border-white/10 rounded p-2 text-white outline-none">
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500">TP (pts)</label>
+                        <input type="number" id="takeProfit" value="1000"
+                            class="w-full bg-darker border border-white/10 rounded p-2 text-white outline-none">
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500">SL (pts)</label>
+                        <input type="number" id="stopLoss" value="500"
+                            class="w-full bg-darker border border-white/10 rounded p-2 text-white outline-none">
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500">Trail Trig</label>
+                        <input type="number" id="trailTrigger" value="200"
+                            class="w-full bg-darker border border-white/10 rounded p-2 text-white outline-none">
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500">Trail Dist</label>
+                        <input type="number" id="trailDist" value="100"
+                            class="w-full bg-darker border border-white/10 rounded p-2 text-white outline-none">
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500">Max Entry</label>
+                        <input type="number" id="maxEntry" value="50"
+                            class="w-full bg-darker border border-white/10 rounded p-2 text-white outline-none">
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500">Spread</label>
+                        <input type="number" id="spread" value="20"
+                            class="w-full bg-darker border border-white/10 rounded p-2 text-white outline-none">
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500">Latency</label>
+                        <input type="number" id="latency" value="0"
+                            class="w-full bg-darker border border-white/10 rounded p-2 text-white outline-none">
+                    </div>
+                </div>
+            </div>
+
+            <button onclick="runSimulation()" id="runBtn"
+                class="w-full bg-primary text-black font-bold py-3 rounded shadow-[0_0_15px_rgba(255,140,0,0.4)] hover:scale-105 transition transform active:scale-95">
+                RUN SIMULATION
+            </button>
+
+            <!-- Status -->
+            <div class="p-4 bg-primary/5 border border-primary/20 rounded-lg">
+                <div class="flex justify-between items-center mb-1">
+                    <span class="text-xs text-primary font-bold">SYSTEM ACTIVE</span>
+                    <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                </div>
+                <p class="text-[10px] text-gray-500">Update: <span id="lastUpdate">Waiting...</span></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="flex-1 flex flex-col relative bg-dark md:overflow-hidden min-h-0">
+        <!-- Background Pattern -->
+        <div
+            class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-5 pointer-events-none">
+        </div>
+
+        <!-- Scrollable Container -->
+        <div class="flex-1 md:overflow-y-auto custom-scrollbar p-6 space-y-6 z-10 w-full">
+
+            <!-- KPI Cards (Stats) -->
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <div class="glass p-5 rounded-xl hover:border-primary/50 transition duration-300">
+                    <h4 class="text-gray-400 text-sm">Total Trades</h4>
+                    <span id="totalTrades" class="text-3xl font-bold text-white">0</span>
+                </div>
+                <div class="glass p-5 rounded-xl hover:border-primary/50 transition duration-300">
+                    <h4 class="text-gray-400 text-sm">Win Rate</h4>
+                    <span id="winRate" class="text-3xl font-bold text-white">0%</span>
+                </div>
+                <div class="glass p-5 rounded-xl hover:border-primary/50 transition duration-300">
+                    <h4 class="text-gray-400 text-sm">Profit Factor</h4>
+                    <span id="profitFactor" class="text-3xl font-bold text-white">0.00</span>
+                </div>
+                <div class="glass p-5 rounded-xl hover:border-primary/50 transition duration-300">
+                    <h4 class="text-gray-400 text-sm">Max DD</h4>
+                    <span id="maxDrawdown" class="text-3xl font-bold text-red-500">$0.00</span>
+                </div>
+                <div class="glass p-5 rounded-xl hover:border-primary/50 transition duration-300">
+                    <h4 class="text-gray-400 text-sm">Net Profit</h4>
+                    <span id="netProfit" class="text-3xl font-bold text-gray-500">$0.00</span>
+                </div>
+            </div>
+
+            <!-- Trade Log Area -->
+            <div class="glass rounded-xl p-6 flex flex-col min-h-[500px]">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-white/90">Trade Log</h3>
+                    <button onclick="toggleEquityModal()"
+                        class="bg-white/10 hover:bg-white/20 px-4 py-2 rounded text-sm font-bold transition">View Equity
+                        Curve</button>
+                </div>
+
+                <!-- Table Header -->
+                <div
+                    class="grid grid-cols-8 gap-4 text-xs font-bold text-gray-500 uppercase tracking-wider pb-3 border-b border-white/10 px-2 min-w-[600px] md:min-w-0">
+                    <div class="col-span-1">ID</div>
+                    <div class="col-span-2">Time Open / Close</div>
+                    <div class="col-span-1">Type</div>
+                    <div class="col-span-1">Entry</div>
+                    <div class="col-span-1">Exit</div>
+                    <div class="col-span-1">Outcome</div>
+                    <div class="col-span-1 text-right">PnL</div>
+                </div>
+
+                <div class="overflow-y-auto custom-scrollbar flex-1" id="tradeList">
+                    <!-- Logs -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Equity Curve Modal -->
+    <div id="equityModal"
+        class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-10"
+        onclick="if(event.target === this) toggleEquityModal()">
+        <div
+            class="bg-[#1A1A1A] w-full max-w-5xl h-[600px] rounded-xl border border-white/10 flex flex-col relative shadow-2xl">
+            <button onclick="toggleEquityModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+            <div class="p-6 border-b border-white/10">
+                <h2 class="text-xl font-bold text-white uppercase tracking-widest">Equity Curve</h2>
+            </div>
+            <div class="flex-1 p-6">
+                <div class="w-full h-full">
+                    <canvas id="equityChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Logic -->
+    <script>
+        // --- Setup ---
+        const API_URL = "http://localhost:8000";
+        setInterval(() => { document.getElementById('lastUpdate').innerText = new Date().toLocaleTimeString(); }, 1000);
+
+        function toggleEquityModal() {
+            const modal = document.getElementById('equityModal');
+            modal.classList.toggle('hidden');
+        }
+
+        // --- Chart ---
+        const ctx = document.getElementById('equityChart').getContext('2d');
+        const equityChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Balance',
+                    data: [],
+                    borderColor: '#FF8C00',
+                    backgroundColor: 'rgba(255, 140, 0, 0.1)',
+                    borderWidth: 2,
+                    tension: 0.1,
+                    fill: true,
+                    pointRadius: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { display: false }, ticks: { display: false } },
+                    y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#666' } }
+                }
+            }
+        });
+
+        // --- Simulation ---
+        async function runSimulation() {
+            const btn = document.getElementById('runBtn');
+            const originalText = btn.innerText;
+            btn.innerText = "RUNNING...";
+            btn.disabled = true;
+            btn.classList.add('opacity-50');
+
+            // Params
+            const params = {
+                initial_balance: parseFloat(document.getElementById('initBalance').value),
+                lot_size: parseFloat(document.getElementById('lotSize').value),
+                ma_period: parseInt(document.getElementById('maPeriod').value),
+                stop_loss_points: parseFloat(document.getElementById('stopLoss').value),
+                take_profit_points: parseFloat(document.getElementById('takeProfit').value),
+                trail_trigger_points: parseFloat(document.getElementById('trailTrigger').value),
+                trail_dist_points: parseFloat(document.getElementById('trailDist').value),
+                max_entry_dist_points: parseFloat(document.getElementById('maxEntry').value),
+                latency_ms: parseInt(document.getElementById('latency').value),
+                spread_points: parseFloat(document.getElementById('spread').value),
+            };
+
+            try {
+                const res = await fetch(`${API_URL}/simulate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(params)
+                });
+                const data = await res.json();
+                updateUI(data);
+            } catch (e) {
+                alert("Error: " + e.message);
+            } finally {
+                btn.innerText = originalText;
+                btn.disabled = false;
+                btn.classList.remove('opacity-50');
+            }
+        }
+
+        function updateUI(data) {
+            // Stats
+            document.getElementById('totalTrades').innerText = data.total_trades;
+            document.getElementById('winRate').innerText = data.win_rate + "%";
+            document.getElementById('profitFactor').innerText = data.profit_factor.toFixed(2);
+            document.getElementById('maxDrawdown').innerText = "$" + data.max_drawdown.toFixed(2);
+
+            const np = document.getElementById('netProfit');
+            np.innerText = "$" + data.net_profit.toFixed(2);
+            np.className = `text-3xl font-bold transition ${data.net_profit >= 0 ? 'text-green-500' : 'text-red-500'}`;
+
+            // Chart
+            equityChart.data.labels = data.equity_curve.map(d => d.time);
+            equityChart.data.datasets[0].data = data.equity_curve.map(d => d.balance);
+            equityChart.update();
+
+            // Log
+            const list = document.getElementById('tradeList');
+            list.innerHTML = '';
+
+            // Limit to last 250 rows for performance as per backend
+            data.trades_log.slice().reverse().forEach(t => {
+                const isWin = t.pnl > 0;
+                const color = isWin ? 'green' : 'red';
+                const div = document.createElement('div');
+                div.className = `grid grid-cols-8 gap-4 p-3 bg-white/5 border-l-2 border-${color}-500 items-center hover:bg-white/10 transition mb-1 rounded text-sm`;
+
+                div.innerHTML = `
+                    <div class="col-span-1 text-gray-500">#${t.id}</div>
+                    <div class="col-span-2 text-xs text-gray-400">
+                        <div class="text-white">${t.time_open.split(' ')[0]} <span class="text-gray-500">${t.time_open.split(' ')[1]}</span></div>
+                        <div>${t.time_close.split(' ')[1]}</div>
+                    </div>
+                    <div class="col-span-1 font-bold text-${t.type === 'BUY' ? 'blue' : 'orange'}-400">${t.type}</div>
+                    <div class="col-span-1 text-gray-300">${t.entry.toFixed(2)}</div>
+                    <div class="col-span-1 text-gray-300">${t.exit.toFixed(2)}</div>
+                    <div class="col-span-1 text-xs uppercase ${isWin ? 'text-green-300' : 'text-red-300'}">${t.outcome}</div>
+                    <div class="col-span-1 text-right font-bold ${isWin ? 'text-green-400' : 'text-red-400'}">${t.pnl >= 0 ? '+' : ''}${t.pnl.toFixed(2)}</div>
+                `;
+                list.appendChild(div);
+            });
+        }
+    </script>
+</body>
+
+</html>
