@@ -9,12 +9,14 @@
     <link href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@300;400;600;700&display=swap"
         rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- PWA Support -->
+    <link rel="manifest" href="manifest.json">
     <style>
         body {
             font-family: 'Josefin Sans', sans-serif;
             background-color: #0A0A0A;
             color: white;
-            overflow: hidden;
+            /* overflow: hidden; Removed to allow mobile scrolling */
         }
 
         .custom-scrollbar::-webkit-scrollbar {
@@ -67,6 +69,15 @@
                     colors: { primary: '#FF8C00', dark: '#0A0A0A', darker: '#000000', secondary: '#1A1A1A' }
                 }
             }
+        }
+
+        // PWA Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('SW registered'))
+                    .catch(err => console.log('SW failure', err));
+            });
         }
     </script>
 </head>
